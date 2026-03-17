@@ -46,11 +46,6 @@ export function initMailchat(documentRef) {
     el.bodyInput.style.height = `${Math.min(160, Math.max(34, el.bodyInput.scrollHeight))}px`;
   }
 
-  async function listAccountFolders(accountId) {
-    const account = state.accounts.find((a) => Number(a.id) === Number(accountId));
-    return account?.folders || [];
-  }
-
   function flattenFolders(folders, out = []) {
     for (const f of folders || []) {
       out.push(f);
@@ -59,14 +54,42 @@ export function initMailchat(documentRef) {
     return out;
   }
 
-  function pickFolderByType(folders, typeWanted) {
-    return folders.find((f) => String(f.type || '').toLowerCase() === typeWanted) || null;
+  function folderTypeOf(folder) {
+    return String(folder?.type || '').toLowerCase();
   }
 
-  async function fetchFolderMessages(folder, limit = 200) {
+  function folderNameOf(folder) {
+    return String(folder?.name || folder?.path || '').toLowerCase();
+  }
+
+  function isSentLike(folder) {
+    const t = folderTypeOf(folder);
+    const n = folderNameOf(folder);
+    return t === 'sent' || /sent|gesendet|outbox/.test(n);
+  }
+
+  function isInboxLike(folder) {
+    const t = folderTypeOf(folder);
+    const n = folderNameOf(folder);
+    return t === 'inbox' || /inbox|posteingang/.test(n);
+  }
+
+  function isIgnoredFolder(folder) {
+    const t = folderTypeOf(folder);
+    const n = folderNameOf(folder);
+    if (['trash', 'junk', 'spam', 'drafts', 'templates', 'archives', 'queue'].includes(t)) return true;
+    return /trash|papierkorb|spam|junk|draft|entw[üu]rfe|archive|archiv/.test(n);
+  }
+
+  async function fetchFolderMessages(folder, limit = 120) {
     if (!folder) return [];
     const all = [];
-    let page = await browser.messages.list(folder);
+    let page;
+    try {
+      page = await browser.messages.list(folder);
+    } catch {
+      return [];
+    }
     while (page?.messages?.length) {
       all.push(...page.messages);
       if (all.length >= limit || !page.id) break;
@@ -87,39 +110,66 @@ export function initMailchat(documentRef) {
 
   async function rebuildChats() {
     if (!state.accountId) return;
-    const folders = flattenFolders(await listAccountFolders(state.accountId));
-    const inbox = pickFolderByType(folders, 'inbox');
-    const sent = pickFolderByType(folders, 'sent');
-    const [inboxMsgs, sentMsgs] = await Promise.all([fetchFolderMessages(inbox, 250), fetchFolderMessages(sent, 250)]);
-    const chatMap = new Map();
+    const account = state.accounts.find((a) => String(a.id) === String(state.accountId));
+    const identities = new Set((account?.identities || []).map((i) => extractEmail(i.email)).filter(Boolean));
 
-    for (const m of inboxMsgs) {
-      const full = await browser.messages.getFull(m.id);
-      const text = stripQuoted(m.subject ? `${m.subject}\n${m.snippet || ''}` : (m.snippet || ''));
-      const from = extractEmail(m.author || full?.headers?.from?.[0] || '');
-      upsertChatMessage(chatMap, from, {
-        id: m.id,
-        direction: 'inbound',
-        body: text || '(leer)',
-        date: m.date,
-        read: m.read,
-        externalMessageId: full?.headers?.['message-id']?.[0] || '',
-      });
+    const allFolders = flattenFolders(account?.folders || []);
+    const folderCandidates = allFolders.filter((f) => !isIgnoredFolder(f));
+    const prioritized = [
+      ...folderCandidates.filter(isInboxLike),
+      ...folderCandidates.filter(isSentLike),
+      ...folderCandidates.filter((f) => !isInboxLike(f) && !isSentLike(f)),
+    ];
+
+    const uniqueFolders = [];
+    const seenFolder = new Set();
+    for (const f of prioritized) {
+      const key = `${f.accountId || ''}:${f.path || f.name || ''}`;
+      if (seenFolder.has(key)) continue;
+      seenFolder.add(key);
+      uniqueFolders.push(f);
     }
 
-    for (const m of sentMsgs) {
-      const full = await browser.messages.getFull(m.id);
-      const toHeader = full?.headers?.to?.[0] || m.recipients?.[0] || '';
-      const to = extractEmail(toHeader);
-      const text = stripQuoted(m.subject ? `${m.subject}\n${m.snippet || ''}` : (m.snippet || ''));
-      upsertChatMessage(chatMap, to, {
-        id: m.id,
-        direction: 'outbound',
-        body: text || '(leer)',
-        date: m.date,
-        read: true,
-        externalMessageId: full?.headers?.['message-id']?.[0] || '',
-      });
+    const folderPayloads = await Promise.all(uniqueFolders.map(async (folder) => ({
+      folder,
+      messages: await fetchFolderMessages(folder, 120),
+    })));
+
+    const chatMap = new Map();
+    const seenMsg = new Set();
+
+    for (const payload of folderPayloads) {
+      const folder = payload.folder;
+      for (const m of payload.messages) {
+        if (seenMsg.has(m.id)) continue;
+        seenMsg.add(m.id);
+
+        let full;
+        try {
+          full = await browser.messages.getFull(m.id);
+        } catch {
+          full = null;
+        }
+
+        const from = extractEmail(m.author || full?.headers?.from?.[0] || '');
+        const to = extractEmail(full?.headers?.to?.[0] || m.recipients?.[0] || '');
+        const isSentFolder = isSentLike(folder);
+        const fromIsSelf = identities.has(from);
+
+        const direction = (isSentFolder || fromIsSelf) ? 'outbound' : 'inbound';
+        const contact = direction === 'outbound' ? to : from;
+        if (!contact) continue;
+
+        const text = stripQuoted(m.subject ? `${m.subject}\n${m.snippet || ''}` : (m.snippet || ''));
+        upsertChatMessage(chatMap, contact, {
+          id: m.id,
+          direction,
+          body: text || '(leer)',
+          date: m.date,
+          read: Boolean(m.read || direction === 'outbound'),
+          externalMessageId: full?.headers?.['message-id']?.[0] || '',
+        });
+      }
     }
 
     for (const chat of chatMap.values()) {
@@ -129,11 +179,26 @@ export function initMailchat(documentRef) {
 
     state.chats = new Map([...chatMap.entries()].sort((a, b) => (a[1].lastDate < b[1].lastDate ? 1 : -1)));
     renderChatList();
-    if (state.activeEmail && state.chats.has(state.activeEmail)) renderActiveChat();
+
+    if (!state.activeEmail && state.chats.size) {
+      state.activeEmail = state.chats.keys().next().value;
+    }
+    if (state.activeEmail && state.chats.has(state.activeEmail)) {
+      renderActiveChat();
+    } else {
+      renderActiveChat();
+    }
   }
 
   function renderChatList() {
     el.chatList.innerHTML = '';
+    if (!state.chats.size) {
+      const li = documentRef.createElement('li');
+      li.innerHTML = '<div class="preview">Keine Chats gefunden. Klicke auf ⟳ zum Aktualisieren.</div>';
+      el.chatList.append(li);
+      return;
+    }
+
     for (const [email, chat] of state.chats.entries()) {
       const node = el.chatItemTpl.content.firstElementChild.cloneNode(true);
       node.querySelector('.name').textContent = email;
@@ -221,6 +286,9 @@ export function initMailchat(documentRef) {
       el.bodyInput.value = '';
       autoGrow();
       await rebuildChats();
+      state.activeEmail = to;
+      renderChatList();
+      renderActiveChat();
     } catch (err) {
       console.error('Senden fehlgeschlagen', err);
       alert(`Senden fehlgeschlagen: ${err.message || err}`);
