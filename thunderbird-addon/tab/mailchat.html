@@ -3,23 +3,20 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>MailChat Sidebar</title>
-  <link rel="stylesheet" href="sidebar.css" />
+  <title>MailChat Tab</title>
+  <link rel="stylesheet" href="../sidebar/sidebar.css" />
 </head>
 <body>
   <div class="app">
     <header class="topbar">
       <select id="accountSelect"></select>
-      <button id="openTabBtn" type="button" title="Als Tab öffnen">⇱</button>
       <button id="syncBtn" type="button" title="Aktualisieren">⟳</button>
     </header>
-
     <section class="layout">
       <aside class="chat-list-pane">
         <div class="pane-title">Chats</div>
         <ul id="chatList" class="chat-list"></ul>
       </aside>
-
       <main class="chat-pane">
         <div class="chat-header" id="chatHeader">Kein Chat ausgewählt</div>
         <div id="messages" class="messages"></div>
@@ -42,6 +39,6 @@
     </li>
   </template>
 
-  <script type="module" src="sidebar.js"></script>
+  <script type="module" src="mailchat.js"></script>
 </body>
 </html>

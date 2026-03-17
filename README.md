@@ -27,14 +27,19 @@ Dann im Browser öffnen: `http://localhost:8000`
 
 ## Thunderbird Add-on (neu)
 
-Im Ordner `thunderbird-addon/` ist ein Thunderbird-WebExtension-Add-on enthalten, das eine chatartige Ansicht als **linke Sidebar** bereitstellt.
+Im Ordner `thunderbird-addon/` ist ein **vollständig autonomes** Thunderbird-WebExtension-Add-on enthalten.  
+Es nutzt **nur interne Thunderbird APIs** (Accounts/Messages/Compose/Tabs) und ist unabhängig von `app.py` oder der Web-Version.
 
 ### Funktionen
-- Kontoauswahl innerhalb der Sidebar
+- Kontoauswahl innerhalb der Sidebar/Tab
 - Chatliste aus Inbox + Sent (pro Kontakt)
 - Verlauf mit vereinfachter Nachrichtendarstellung (Zitat-Teile reduziert)
-- Senden direkt aus der Sidebar über Thunderbird Compose-Engine
+- Senden direkt über Thunderbird Compose-Engine
 - Basis-Reply-Threading über `inReplyTo`/`references` auf die letzte Chat-Nachricht
+- Startbar über mehrere Wege:
+  - Thunderbird-Sidebar (MailChat)
+  - Add-on-Button Popup ("MailChat als Tab öffnen" / "MailChat Sidebar öffnen")
+  - Tastenkürzel `Ctrl+Shift+M` (öffnet MailChat als Tab)
 
 ### Add-on lokal laden (Entwicklung)
 1. Thunderbird öffnen

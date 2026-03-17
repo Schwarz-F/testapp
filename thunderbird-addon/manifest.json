@@ -1,8 +1,8 @@
 {
   "manifest_version": 2,
   "name": "MailChat Sidebar",
-  "version": "0.1.0",
-  "description": "Zeigt E-Mails chatartig in einer Thunderbird-Sidebar an.",
+  "version": "0.2.0",
+  "description": "Autonomes Thunderbird-Add-on: Chatartige Mail-Ansicht als Sidebar und Tab.",
   "applications": {
     "gecko": {
       "id": "mailchat-sidebar@example.local",
@@ -17,8 +17,25 @@
     "storage",
     "tabs"
   ],
+  "background": {
+    "scripts": [
+      "background.js"
+    ]
+  },
   "sidebar_action": {
     "default_title": "MailChat",
     "default_panel": "sidebar/sidebar.html"
+  },
+  "browser_action": {
+    "default_title": "MailChat öffnen",
+    "default_popup": "launcher/launcher.html"
+  },
+  "commands": {
+    "open-mailchat-tab": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+M"
+      },
+      "description": "MailChat als Tab öffnen"
+    }
   }
 }
