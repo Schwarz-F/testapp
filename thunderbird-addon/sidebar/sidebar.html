@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>MailChat Sidebar</title>
+  <link rel="stylesheet" href="sidebar.css" />
+</head>
+<body>
+  <div class="app">
+    <header class="topbar">
+      <select id="accountSelect"></select>
+      <button id="syncBtn" type="button" title="Aktualisieren">⟳</button>
+    </header>
+
+    <section class="layout">
+      <aside class="chat-list-pane">
+        <div class="pane-title">Chats</div>
+        <ul id="chatList" class="chat-list"></ul>
+      </aside>
+
+      <main class="chat-pane">
+        <div class="chat-header" id="chatHeader">Kein Chat ausgewählt</div>
+        <div id="messages" class="messages"></div>
+        <form id="sendForm" class="composer">
+          <input id="toInput" type="email" placeholder="Empfänger (falls neuer Chat)" />
+          <textarea id="bodyInput" rows="1" placeholder="Nachricht schreiben..."></textarea>
+          <button id="sendBtn" type="submit">Senden</button>
+        </form>
+      </main>
+    </section>
+  </div>
+
+  <template id="chatItemTpl">
+    <li>
+      <div class="row">
+        <strong class="name"></strong>
+        <span class="badge" hidden></span>
+      </div>
+      <div class="preview"></div>
+    </li>
+  </template>
+
+  <script type="module" src="sidebar.js"></script>
+</body>
+</html>

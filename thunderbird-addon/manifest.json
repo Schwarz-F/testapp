@@ -1,0 +1,24 @@
+{
+  "manifest_version": 2,
+  "name": "MailChat Sidebar",
+  "version": "0.1.0",
+  "description": "Zeigt E-Mails chatartig in einer Thunderbird-Sidebar an.",
+  "applications": {
+    "gecko": {
+      "id": "mailchat-sidebar@example.local",
+      "strict_min_version": "115.0"
+    }
+  },
+  "permissions": [
+    "accountsRead",
+    "messagesRead",
+    "messagesModify",
+    "compose",
+    "storage",
+    "tabs"
+  ],
+  "sidebar_action": {
+    "default_title": "MailChat",
+    "default_panel": "sidebar/sidebar.html"
+  }
+}

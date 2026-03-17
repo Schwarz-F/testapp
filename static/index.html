@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MailChat</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="shell" id="shell">
+    <aside class="sidebar">
+      <div class="brand-row">
+        <h1>MailChat</h1>
+        <div class="brand-actions">
+          <button id="newEntityBtn" class="ghost" title="Neu">＋</button>
+          <button id="modeSwitchBtn" class="ghost">📱 Mobile</button>
+        </div>
+      </div>
+
+      <div class="toolbar account-toolbar">
+        <div class="account-select-wrap">
+          <span id="accountSyncDot" class="sync-dot sync-red" title="Nicht synchronisiert"></span>
+          <select id="accountSelect"></select>
+        </div>
+        <button id="editAccountBtn" class="ghost" title="Konto bearbeiten">✎</button>
+        <button id="newAccountBtn">+ Konto</button>
+      </div>
+
+      <div class="toolbar sticky-toolbar">
+        <button id="syncBtn" class="full">Synchronisieren</button>
+      </div>
+
+      <div class="chat-scroll">
+        <ul id="chatList" class="chat-list"></ul>
+        <h3>Gruppen</h3>
+        <ul id="groupList" class="chat-list"></ul>
+      </div>
+    </aside>
+
+    <div id="splitter" class="splitter" role="separator" aria-orientation="vertical"></div>
+
+    <main class="chat-main">
+      <div class="chat-top">
+        <button id="mobileBackBtn" class="ghost mobile-only" type="button">← Zurück</button>
+        <div class="contact-info" id="contactInfo">Kein Chat ausgewählt</div>
+        <button id="replyBanner" class="reply-pill ghost" type="button" hidden>
+          <span id="replyBannerText"></span>
+        </button>
+        <button id="clearReplyBtn" type="button" class="ghost reply-clear" hidden>✕</button>
+        <button id="addToBookBtn" class="ghost icon-btn" type="button" title="Zum Kontaktbuch hinzufügen" hidden>＋</button>
+        <button id="settingsTopBtn" class="ghost icon-btn" type="button" title="Einstellungen">⚙️</button>
+        <button id="errorBtn" class="ghost icon-btn error-btn" type="button" title="Fehler anzeigen">⚠️</button>
+      </div>
+
+      <div id="messages" class="messages"></div>
+
+      <form id="sendForm" class="composer">
+        <label class="html-switch"><input id="htmlMode" type="checkbox" /> HTML</label>
+        <input id="attachmentInput" type="file" multiple hidden />
+        <button id="attachmentBtn" type="button" class="ghost" title="Anhang hochladen">📎</button>
+        <button id="emojiBtn" type="button" class="ghost" title="System-Emoji">😀</button>
+        <textarea id="messageInput" rows="1" placeholder="Nachricht schreiben..."></textarea>
+        <button type="submit">Senden</button>
+      </form>
+    </main>
+  </div>
+
+  <dialog id="accountDialog">
+    <form id="accountForm" method="dialog">
+      <h2>E-Mail-Konto</h2>
+      <input type="hidden" name="account_id" />
+      <label>Name<input name="name" required /></label>
+      <label>E-Mail<input name="email" type="email" required /></label>
+      <label>IMAP Host<input name="imap_host" required /></label>
+      <label>IMAP Port<input name="imap_port" value="993" required /></label>
+      <label>SMTP Host<input name="smtp_host" required /></label>
+      <label>SMTP Port<input name="smtp_port" value="465" required /></label>
+      <label>SMTP Sicherheit
+        <select name="smtp_security">
+          <option value="auto">Auto (empfohlen)</option>
+          <option value="ssl">SSL/TLS</option>
+          <option value="starttls">STARTTLS</option>
+          <option value="plain">Plain</option>
+        </select>
+      </label>
+      <label>Passwort / App-Passwort<input name="password" type="password" /></label>
+      <label><input name="use_ssl" type="checkbox" checked /> IMAP SSL verwenden</label>
+      <div class="dialog-actions">
+        <button type="button" id="closeDialogBtn" class="ghost">Abbrechen</button>
+        <button type="submit">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="settingsDialog">
+    <form id="settingsForm" method="dialog">
+      <h2>Einstellungen</h2>
+      <fieldset>
+        <legend>Empfang & Echtzeit</legend>
+        <label>Polling Intervall (ms)<input name="poll_interval_ms" type="number" min="300" step="100" /></label>
+        <label><input name="auto_sync_enabled" type="checkbox" /> Auto-Sync aktiv</label>
+      </fieldset>
+      <fieldset>
+        <legend>Nachrichten</legend>
+        <label><input name="enter_sends_message" type="checkbox" /> Enter sendet Nachricht</label>
+        <label><input name="mark_read_on_open" type="checkbox" /> Nachrichten beim Chat-Öffnen als gelesen markieren</label>
+        <label><input name="strip_replies" type="checkbox" /> Zitatverläufe aus Antworten entfernen</label>
+      </fieldset>
+      <fieldset>
+        <legend>Filter & Bestätigungen</legend>
+        <label><input name="filter_noreply" type="checkbox" /> No-Reply filtern</label>
+        <label><input name="filter_info_addresses" type="checkbox" /> info@ filtern</label>
+        <label><input name="filter_promotions" type="checkbox" /> Werbe-/List-Mails filtern</label>
+        <label><input name="send_custom_read_receipts" type="checkbox" /> Eigene Lesebestätigungen senden (falls nötig)</label>
+      </fieldset>
+      <fieldset>
+        <legend>Kontakte</legend>
+        <label><input name="os_contact_sync_enabled" type="checkbox" /> OS-Kontakte synchronisieren (wenn verfügbar)</label>
+      </fieldset>
+      <div class="dialog-actions">
+        <button type="button" id="closeSettingsBtn" class="ghost">Schließen</button>
+        <button type="submit">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="profileDialog">
+    <form id="profileForm" method="dialog">
+      <h2>Profil bearbeiten</h2>
+      <input type="hidden" name="kind" />
+      <input type="hidden" name="email" />
+      <input type="hidden" name="group_id" />
+      <label>Name<input name="display_name" /></label>
+      <label>Neue E-Mail (nur Kontakt)<input name="new_email" type="email" /></label>
+      <label>Profilbild URL<input name="avatar_url" placeholder="https://..." /></label>
+      <label>Profilbild hochladen<input name="avatar_file" type="file" accept="image/*" /></label>
+      <div class="dialog-actions">
+        <button type="button" id="closeProfileBtn" class="ghost">Abbrechen</button>
+        <button type="submit">Speichern</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="errorDialog">
+    <form method="dialog" class="error-log-form">
+      <h2>Fehlerprotokoll</h2>
+      <pre id="errorLogOutput" class="error-log-output">Keine Fehler</pre>
+      <div class="dialog-actions">
+        <button type="button" id="clearErrorsBtn" class="ghost">Leeren</button>
+        <button type="submit">Schließen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <button id="settingsBtn" class="settings-fab" title="Einstellungen" hidden>⚙️</button>
+
+  <div id="chatContextMenu" class="context-menu" hidden>
+    <button id="ctxEditBtn" type="button">Bearbeiten</button>
+    <button id="ctxDeleteBtn" type="button">Löschen</button>
+  </div>
+
+  <div id="emojiPickerWrap" class="emoji-picker-wrap" hidden>
+    <emoji-picker id="emojiPicker"></emoji-picker>
+  </div>
+
+  <dialog id="newEntityDialog">
+    <form id="newEntityForm" method="dialog">
+      <h2>Neu erstellen</h2>
+      <label>Typ
+        <select name="type">
+          <option value="contact">Kontakt</option>
+          <option value="group">Gruppe</option>
+        </select>
+      </label>
+      <label>Name<input name="name" required /></label>
+      <label id="newEntityEmailLabel">E-Mail (Kontakt)<input name="email" type="email" /></label>
+      <label id="newEntityMembersLabel" hidden>Mitglieder aus Kontaktbuch
+        <input id="newEntityMemberSearch" placeholder="Kontakt suchen oder neue E-Mail eingeben" />
+        <button id="addMemberEmailBtn" type="button" class="ghost">Zur Liste hinzufügen</button>
+        <div id="newEntityMembersList" class="members-list"></div>
+      </label>
+      <div class="dialog-actions">
+        <button type="button" id="closeNewEntityBtn" class="ghost">Abbrechen</button>
+        <button type="submit">Erstellen</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
